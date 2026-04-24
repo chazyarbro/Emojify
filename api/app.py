@@ -1,18 +1,19 @@
 """
 Flask API for lyrics emotion analysis and random quotes.
-Uses Genius for lyrics and EmoRoBERTa for emotion.
+Uses Genius for lyrics and HuggingFace Inference API for emotion.
 """
 import os
 import random
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import nltk
 import lyricsgenius as lg
+import requests
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from transformers import pipeline
 
 load_dotenv()
 
@@ -21,10 +22,11 @@ _cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.
 CORS(app, origins=_cors_origins)
 
 GENIUS_TOKEN = os.environ["GENIUS_TOKEN"]
+HF_API_TOKEN = os.environ["HF_API_TOKEN"]
+HF_MODEL_URL = "https://api-inference.huggingface.co/models/arpanghoshal/EmoRoBERTa"
 
 MAX_SONGS = 25
 FETCH_WORKERS = 5
-INFERENCE_BATCH = 8
 
 # EmoRoBERTa labels we care about -> canonical emotion for response
 EMOTION_MAP = {
@@ -75,7 +77,27 @@ genius._session.headers["User-Agent"] = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/124.0.0.0 Safari/537.36"
 )
-emotion_pipeline = pipeline("sentiment-analysis", model="arpanghoshal/EmoRoBERTa")
+
+
+def classify_emotions_batch(texts):
+    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+    for attempt in range(2):
+        resp = requests.post(
+            HF_MODEL_URL,
+            headers=headers,
+            json={"inputs": texts},
+            timeout=60,
+        )
+        if resp.status_code == 503:
+            # Model is still loading on HF side — wait and retry once
+            time.sleep(25)
+            continue
+        resp.raise_for_status()
+        break
+    raw = resp.json()
+    # HF API returns [[{label, score}, ...], ...] sorted by score desc
+    # Take the top prediction per input
+    return [item[0] if isinstance(item, list) else item for item in raw]
 
 
 def fetch_lyrics(song_title, artist=None):
@@ -150,7 +172,6 @@ def lyrics():
         for title in songs
     ][:MAX_SONGS]
 
-    # Fetch all lyrics in parallel
     with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as executor:
         cleaned = list(executor.map(_fetch_and_clean, song_pairs))
 
@@ -158,8 +179,7 @@ def lyrics():
     if not texts:
         return jsonify([[e, 0.0] for e in CANONICAL_EMOTIONS])
 
-    # Batch inference over all lyrics at once
-    predictions = emotion_pipeline(texts, batch_size=INFERENCE_BATCH)
+    predictions = classify_emotions_batch(texts)
 
     emotion_totals = {e: 0.0 for e in CANONICAL_EMOTIONS}
     for pred in predictions:
