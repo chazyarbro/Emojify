@@ -1,6 +1,6 @@
 """
 Flask API for lyrics emotion analysis and random quotes.
-Uses Genius for lyrics and HuggingFace Inference API for emotion.
+Uses Genius for lyrics and HuggingFace Inference API (roberta-base-go_emotions) for emotion.
 """
 import os
 import random
@@ -23,7 +23,7 @@ CORS(app, origins=_cors_origins)
 
 GENIUS_TOKEN = os.environ["GENIUS_TOKEN"]
 HF_API_TOKEN = os.environ["HF_API_TOKEN"]
-HF_MODEL_URL = "https://api-inference.huggingface.co/models/arpanghoshal/EmoRoBERTa"
+HF_MODEL_URL = "https://router.huggingface.co/hf-inference/models/SamLowe/roberta-base-go_emotions"
 
 MAX_SONGS = 25
 FETCH_WORKERS = 5
@@ -95,9 +95,9 @@ def classify_emotions_batch(texts):
         resp.raise_for_status()
         break
     raw = resp.json()
-    # HF API returns [[{label, score}, ...], ...] sorted by score desc
-    # Take the top prediction per input
-    return [item[0] if isinstance(item, list) else item for item in raw]
+    # HF router wraps the batch in an extra list: [[pred1, pred2, ...]]
+    # where raw[0][i] is the top prediction for input i
+    return raw[0] if raw and isinstance(raw[0], list) else raw
 
 
 def fetch_lyrics(song_title, artist=None):
