@@ -17,7 +17,8 @@ from transformers import pipeline
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
+_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+CORS(app, origins=_cors_origins)
 
 GENIUS_TOKEN = os.environ["GENIUS_TOKEN"]
 
