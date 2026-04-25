@@ -20,7 +20,7 @@ export function EmotionResults({
   if (persona) {
     return (
       <>
-        <PersonaHero persona={persona} hero={hero} trackCount={trackCount} />
+        <PersonaHero persona={persona} />
         <EmotionList results={results} startRank={1} />
       </>
     );

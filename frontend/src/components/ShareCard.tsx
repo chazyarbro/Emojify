@@ -25,7 +25,6 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
       <div className="share-card-frame" aria-hidden>
         <article ref={ref} className="share-card">
           <header className="share-card-header">
-            <span className="share-card-wordmark">EMOJIFY</span>
             <span className="share-card-issue">A MUSIC EMOTION ANALYSIS</span>
           </header>
 
@@ -36,9 +35,6 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
                 <div className="share-card-kicker">THE DIAGNOSIS</div>
                 <h2 className="share-card-name">{persona.name}</h2>
                 <p className="share-card-tagline">{persona.tagline}</p>
-                <p className="share-card-meta">
-                  SCORE {heroScore.toFixed(2)} · {trackCount} TRACKS
-                </p>
               </div>
             </section>
           ) : (
@@ -84,10 +80,6 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
 
           <footer className="share-card-footer">
             <span className="share-card-footer-mark">EMOJIFY</span>
-            <span className="share-card-footer-rule" />
-            <span className="share-card-footer-note">
-              READ YOUR TASTE · EMOTION VIA LYRICS
-            </span>
           </footer>
         </article>
       </div>
