@@ -16,6 +16,7 @@ import "./App.css";
 function App() {
   const [timeRange, setTimeRange] = useState<TimeRange>("medium_term");
   const captureRef = useRef<HTMLDivElement>(null);
+  const watermarkRef = useRef<HTMLDivElement>(null);
 
   const { token, error: authError, handleLogin, handleLogout } = useSpotifyAuth();
   const {
@@ -29,7 +30,7 @@ function App() {
     handleGenerate,
   } = useEmojiGenerator();
 
-  const { share, sharing } = useShare(captureRef);
+  const { share, sharing } = useShare(captureRef, watermarkRef);
 
   const error = authError ?? generatorError;
 
@@ -49,11 +50,7 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Header
-        onLogout={onLogout}
-        onShare={results && results.length > 0 ? share : undefined}
-        shareLoading={sharing}
-      />
+      <Header onLogout={onLogout} />
       <main>
         <TimeRangePicker
           value={timeRange}
@@ -75,13 +72,23 @@ function App() {
           />
         )}
         {results && results.length > 0 && (
-          <div ref={captureRef} className="share-capture">
-            <EmotionResults results={results} trackCount={trackCount} />
-            <div className="share-watermark">
-              <span className="share-watermark-wordmark">EMOJIFY</span>
-              <span className="share-watermark-tagline">A MUSIC EMOTION ANALYSIS</span>
+          <>
+            <div ref={captureRef} className="share-capture">
+              <EmotionResults results={results} trackCount={trackCount} />
+              <div ref={watermarkRef} className="share-watermark">
+                <span className="share-watermark-wordmark">EMOJIFY</span>
+                <span className="share-watermark-tagline">A MUSIC EMOTION ANALYSIS</span>
+              </div>
             </div>
-          </div>
+            <button
+              type="button"
+              className="cover-cta cta-inline share-cta"
+              onClick={share}
+              disabled={sharing}
+            >
+              {sharing ? COPY.share.sharing : `${COPY.share.button} →`}
+            </button>
+          </>
         )}
       </main>
     </div>
