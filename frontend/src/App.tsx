@@ -29,7 +29,7 @@ function App() {
     handleGenerate,
   } = useEmojiGenerator();
 
-  const { copyLink, copied, downloadImage } = useShare(results, trackCount, timeRange);
+  const { share, sharing } = useShare(captureRef);
 
   const error = authError ?? generatorError;
 
@@ -51,8 +51,8 @@ function App() {
     <div className="app-shell">
       <Header
         onLogout={onLogout}
-        onShare={results && results.length > 0 ? copyLink : undefined}
-        shareCopied={copied}
+        onShare={results && results.length > 0 ? share : undefined}
+        shareLoading={sharing}
       />
       <main>
         <TimeRangePicker
@@ -75,19 +75,13 @@ function App() {
           />
         )}
         {results && results.length > 0 && (
-          <>
-            <div ref={captureRef}>
-              <EmotionResults results={results} trackCount={trackCount} />
+          <div ref={captureRef} className="share-capture">
+            <EmotionResults results={results} trackCount={trackCount} />
+            <div className="share-watermark">
+              <span className="share-watermark-wordmark">EMOJIFY</span>
+              <span className="share-watermark-tagline">A MUSIC EMOTION ANALYSIS</span>
             </div>
-            <button
-              type="button"
-              className="cover-cta cta-inline"
-              onClick={() => captureRef.current && downloadImage(captureRef.current)}
-            >
-              {COPY.share.saveImage}
-              <span className="cta-arrow">→</span>
-            </button>
-          </>
+          </div>
         )}
       </main>
     </div>

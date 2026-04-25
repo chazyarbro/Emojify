@@ -3,10 +3,10 @@ import { COPY } from "../copy";
 interface HeaderProps {
   onLogout: () => void;
   onShare?: () => void;
-  shareCopied?: boolean;
+  shareLoading?: boolean;
 }
 
-export function Header({ onLogout, onShare, shareCopied }: HeaderProps) {
+export function Header({ onLogout, onShare, shareLoading }: HeaderProps) {
   return (
     <header className="results-header">
       <div className="results-header-left">
@@ -17,10 +17,11 @@ export function Header({ onLogout, onShare, shareCopied }: HeaderProps) {
         {onShare && (
           <button
             type="button"
-            className={`text-link share-btn${shareCopied ? " share-btn--copied" : ""}`}
+            className="text-link"
             onClick={onShare}
+            disabled={shareLoading}
           >
-            {shareCopied ? COPY.share.copied : `${COPY.share.button} →`}
+            {shareLoading ? COPY.share.sharing : `${COPY.share.button} →`}
           </button>
         )}
         <button type="button" className="text-link" onClick={onLogout}>

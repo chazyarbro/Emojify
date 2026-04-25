@@ -39,11 +39,7 @@ export const COPY = {
   },
   share: {
     button: "SHARE",
-    copied: "COPIED ✓",
-    saveImage: "Save image",
-    screenLabel: "SHARED DIAGNOSIS",
-    cta: "Run your own diagnosis",
-    badPayload: "This link looks broken. Try generating a new one.",
+    sharing: "SHARING...",
   },
 } as const;
 

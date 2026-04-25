@@ -1,71 +1,34 @@
 import { useState, useCallback } from "react";
 import { toPng } from "html-to-image";
-import type { EmotionResult } from "../types/api";
-import type { TimeRange } from "../types/spotify";
-import type { SharePayload } from "../types/share";
 
-export function encodeSharePayload(
-  results: EmotionResult[],
-  trackCount: number,
-  timeRange: TimeRange
-): string {
-  const payload: SharePayload = { v: 1, e: results, n: trackCount, r: timeRange };
-  return btoa(JSON.stringify(payload));
-}
+export function useShare(captureRef: React.RefObject<HTMLElement | null>) {
+  const [sharing, setSharing] = useState(false);
 
-export function decodeSharePayload(encoded: string): SharePayload | null {
-  try {
-    const payload = JSON.parse(atob(encoded));
-    if (payload?.v !== 1 || !Array.isArray(payload?.e) || !payload?.r) return null;
-    return payload as SharePayload;
-  } catch {
-    return null;
-  }
-}
-
-export function useShare(
-  results: EmotionResult[] | null,
-  trackCount: number,
-  timeRange: TimeRange
-) {
-  const [copied, setCopied] = useState(false);
-
-  const encoded = results ? encodeSharePayload(results, trackCount, timeRange) : "";
-  const shareUrl = results
-    ? `${window.location.origin}/share?d=${encoded}`
-    : "";
-
-  const copyLink = useCallback(async () => {
-    if (!shareUrl) return;
+  const share = useCallback(async () => {
+    if (!captureRef.current || sharing) return;
+    setSharing(true);
     try {
-      await navigator.clipboard.writeText(shareUrl);
-    } catch {
-      // Fallback for browsers without clipboard API
-      const el = document.createElement("textarea");
-      el.value = shareUrl;
-      el.style.position = "fixed";
-      el.style.opacity = "0";
-      document.body.appendChild(el);
-      el.focus();
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }, [shareUrl]);
+      const dataUrl = await toPng(captureRef.current, { pixelRatio: 2 });
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "my-emojify-diagnosis.png", { type: "image/png" });
 
-  const downloadImage = useCallback(async (element: HTMLElement) => {
-    try {
-      const dataUrl = await toPng(element, { pixelRatio: 2 });
-      const link = document.createElement("a");
-      link.download = "my-emojify-diagnosis.png";
-      link.href = dataUrl;
-      link.click();
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: "My Emojify Diagnosis" });
+      } else {
+        const link = document.createElement("a");
+        link.download = "my-emojify-diagnosis.png";
+        link.href = dataUrl;
+        link.click();
+      }
     } catch (err) {
-      console.error("Image download failed:", err);
+      if (err instanceof Error && err.name !== "AbortError") {
+        console.error("Share failed:", err);
+      }
+    } finally {
+      setSharing(false);
     }
-  }, []);
+  }, [captureRef, sharing]);
 
-  return { shareUrl, copyLink, copied, downloadImage };
+  return { share, sharing };
 }
