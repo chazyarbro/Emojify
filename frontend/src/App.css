@@ -590,6 +590,65 @@
   }
 }
 
+/* === Share screen ======================================= */
+
+.share-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 clamp(1.5rem, 6vw, 4.5rem);
+}
+
+.share-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: clamp(1.25rem, 3vw, 1.75rem) 0;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.share-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin: 1.5rem 0 clamp(2rem, 4vw, 3rem);
+  align-items: baseline;
+}
+
+/* Header action group (share + logout) */
+.results-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* Share button accent state */
+.share-btn--copied {
+  color: var(--accent) !important;
+  border-bottom-color: var(--accent) !important;
+}
+
+/* === Mobile (share) ===================================== */
+
+@media (max-width: 720px) {
+  .share-header {
+    font-size: 10px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

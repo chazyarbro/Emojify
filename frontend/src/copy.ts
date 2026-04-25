@@ -37,6 +37,14 @@ export const COPY = {
     generic: "Something went sideways.",
     retry: "RETRY",
   },
+  share: {
+    button: "SHARE",
+    copied: "COPIED ✓",
+    saveImage: "Save image",
+    screenLabel: "SHARED DIAGNOSIS",
+    cta: "Run your own diagnosis",
+    badPayload: "This link looks broken. Try generating a new one.",
+  },
 } as const;
 
 // Backend cap on tracks analyzed per request — must stay in sync with MAX_SONGS in api/app.py

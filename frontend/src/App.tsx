@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useRef, useState, useCallback } from "react";
 import {
   LoginScreen,
   LoadingScreen,
@@ -7,7 +7,7 @@ import {
   EmotionResults,
   ErrorMessage,
 } from "./components";
-import { useSpotifyAuth, useEmojiGenerator } from "./hooks";
+import { useSpotifyAuth, useEmojiGenerator, useShare } from "./hooks";
 import { TIME_RANGES } from "./constants/timeRanges";
 import { COPY } from "./copy";
 import type { TimeRange } from "./types/spotify";
@@ -15,6 +15,7 @@ import "./App.css";
 
 function App() {
   const [timeRange, setTimeRange] = useState<TimeRange>("medium_term");
+  const captureRef = useRef<HTMLDivElement>(null);
 
   const { token, error: authError, handleLogin, handleLogout } = useSpotifyAuth();
   const {
@@ -27,6 +28,8 @@ function App() {
     setError: setGeneratorError,
     handleGenerate,
   } = useEmojiGenerator();
+
+  const { copyLink, copied, downloadImage } = useShare(results, trackCount, timeRange);
 
   const error = authError ?? generatorError;
 
@@ -46,7 +49,11 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Header onLogout={onLogout} />
+      <Header
+        onLogout={onLogout}
+        onShare={results && results.length > 0 ? copyLink : undefined}
+        shareCopied={copied}
+      />
       <main>
         <TimeRangePicker
           value={timeRange}
@@ -68,7 +75,19 @@ function App() {
           />
         )}
         {results && results.length > 0 && (
-          <EmotionResults results={results} trackCount={trackCount} />
+          <>
+            <div ref={captureRef}>
+              <EmotionResults results={results} trackCount={trackCount} />
+            </div>
+            <button
+              type="button"
+              className="cover-cta cta-inline"
+              onClick={() => captureRef.current && downloadImage(captureRef.current)}
+            >
+              {COPY.share.saveImage}
+              <span className="cta-arrow">→</span>
+            </button>
+          </>
         )}
       </main>
     </div>
