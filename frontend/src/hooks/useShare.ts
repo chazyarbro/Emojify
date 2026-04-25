@@ -1,19 +1,12 @@
 import { useState, useCallback } from "react";
 import html2canvas from "html2canvas";
 
-export function useShare(
-  captureRef: React.RefObject<HTMLElement | null>,
-  watermarkRef?: React.RefObject<HTMLElement | null>
-) {
+export function useShare(captureRef: React.RefObject<HTMLElement | null>) {
   const [sharing, setSharing] = useState(false);
 
   const share = useCallback(async () => {
     if (!captureRef.current || sharing) return;
     setSharing(true);
-
-    if (watermarkRef?.current) {
-      watermarkRef.current.style.display = "flex";
-    }
 
     try {
       await document.fonts.ready;
@@ -23,6 +16,8 @@ export function useShare(
         backgroundColor: "#F1ECE2",
         useCORS: true,
         logging: false,
+        windowWidth: captureRef.current.scrollWidth,
+        windowHeight: captureRef.current.scrollHeight,
       });
 
       const blob = await new Promise<Blob | null>((resolve) =>
@@ -30,7 +25,9 @@ export function useShare(
       );
       if (!blob) throw new Error("Failed to generate image");
 
-      const file = new File([blob], "my-emojify-diagnosis.png", { type: "image/png" });
+      const file = new File([blob], "my-emojify-diagnosis.png", {
+        type: "image/png",
+      });
 
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: "My Emojify Diagnosis" });
@@ -47,12 +44,9 @@ export function useShare(
         console.error("Share failed:", err);
       }
     } finally {
-      if (watermarkRef?.current) {
-        watermarkRef.current.style.display = "none";
-      }
       setSharing(false);
     }
-  }, [captureRef, watermarkRef, sharing]);
+  }, [captureRef, sharing]);
 
   return { share, sharing };
 }

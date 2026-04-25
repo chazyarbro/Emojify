@@ -6,6 +6,8 @@ import {
   TimeRangePicker,
   EmotionResults,
   ErrorMessage,
+  ShareCard,
+  Marginalia,
 } from "./components";
 import { useSpotifyAuth, useEmojiGenerator, useShare } from "./hooks";
 import { TIME_RANGES } from "./constants/timeRanges";
@@ -15,8 +17,7 @@ import "./App.css";
 
 function App() {
   const [timeRange, setTimeRange] = useState<TimeRange>("medium_term");
-  const captureRef = useRef<HTMLDivElement>(null);
-  const watermarkRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   const { token, error: authError, handleLogin, handleLogout } = useSpotifyAuth();
   const {
@@ -30,7 +31,7 @@ function App() {
     handleGenerate,
   } = useEmojiGenerator();
 
-  const { share, sharing } = useShare(captureRef, watermarkRef);
+  const { share, sharing } = useShare(shareCardRef);
 
   const error = authError ?? generatorError;
 
@@ -47,6 +48,8 @@ function App() {
   if (loading) {
     return <LoadingScreen quotes={quotes} />;
   }
+
+  const hasResults = !!results && results.length > 0;
 
   return (
     <div className="app-shell">
@@ -71,15 +74,9 @@ function App() {
             onRetry={() => handleGenerate(timeRange)}
           />
         )}
-        {results && results.length > 0 && (
+        {hasResults && (
           <>
-            <div ref={captureRef} className="share-capture">
-              <EmotionResults results={results} trackCount={trackCount} />
-              <div ref={watermarkRef} className="share-watermark">
-                <span className="share-watermark-wordmark">EMOJIFY</span>
-                <span className="share-watermark-tagline">A MUSIC EMOTION ANALYSIS</span>
-              </div>
-            </div>
+            <EmotionResults results={results} trackCount={trackCount} />
             <button
               type="button"
               className="cover-cta cta-inline share-cta"
@@ -88,9 +85,17 @@ function App() {
             >
               {sharing ? COPY.share.sharing : `${COPY.share.button} →`}
             </button>
+            <Marginalia />
           </>
         )}
       </main>
+      {hasResults && (
+        <ShareCard
+          ref={shareCardRef}
+          results={results}
+          trackCount={trackCount}
+        />
+      )}
     </div>
   );
 }

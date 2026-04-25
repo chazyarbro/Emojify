@@ -597,41 +597,226 @@
   gap: 1.25rem;
 }
 
-/* Capture area — explicit background so the PNG is never transparent */
-.share-capture {
-  background: var(--paper);
-}
-
-/* Share CTA sits just below the results */
+/* Share CTA — sits between results list and the marginalia footer */
 .share-cta {
-  margin-top: 1.75rem;
+  margin-top: clamp(1.5rem, 4vw, 2.25rem);
+  margin-bottom: 0;
 }
 
-/* Watermark: hidden on screen, revealed only during PNG capture */
-.share-watermark {
-  display: none;
-  padding: 1.25rem 0 1.5rem;
-  border-top: 1px solid var(--rule);
+/* === Share card =====================================
+   Rendered off-screen, captured by html2canvas into the
+   shareable PNG. Fixed dimensions so the output is
+   identical regardless of viewport. EMOJIFY watermark
+   is baked into this layout — it never appears on the
+   live page.
+====================================================== */
+
+.share-card-frame {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.share-card {
+  width: 1080px;
+  height: 1350px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 88px 96px 80px;
+  display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
+  font-family: var(--font-sans);
+  position: relative;
+  overflow: hidden;
 }
 
-.share-watermark-wordmark {
+.share-card::before {
+  content: '';
+  position: absolute;
+  inset: 28px;
+  border: 1px solid var(--rule);
+  pointer-events: none;
+}
+
+.share-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
   font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.16em;
+  font-size: 16px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.share-card-wordmark {
+  font-weight: 600;
   color: var(--ink);
 }
 
-.share-watermark-tagline {
+.share-card-issue {
+  color: var(--ink-mute);
+  letter-spacing: 0.14em;
+}
+
+.share-card-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 5fr);
+  gap: 56px;
+  align-items: center;
+  padding: 64px 0 56px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.share-card-emoji {
+  font-size: 280px;
+  line-height: 0.95;
+  text-align: center;
+}
+
+.share-card-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.share-card-rank {
+  font-family: var(--font-serif);
+  font-size: 96px;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--ink-mute);
+  font-variation-settings: 'opsz' 144;
+  letter-spacing: -0.04em;
+}
+
+.share-card-name {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 88px;
+  font-weight: 400;
+  line-height: 1;
+  margin: 0;
+  color: var(--ink);
+  font-variation-settings: 'opsz' 144, 'SOFT' 100;
+  letter-spacing: -0.02em;
+  text-transform: capitalize;
+}
+
+.share-card-summary {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  line-height: 1.45;
+  color: var(--ink-mute);
+  margin: 8px 0 0;
+  max-width: 28ch;
+}
+
+.share-card-meta {
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: 14px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-mute);
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0 0;
+}
+
+.share-card-list {
+  list-style: none;
+  margin: 0;
+  padding: 32px 0 0;
+  flex: 1;
+}
+
+.share-card-row {
+  display: grid;
+  grid-template-columns: 56px 56px 1fr auto;
+  align-items: baseline;
+  column-gap: 20px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.share-card-row:last-child {
+  border-bottom: none;
+}
+
+.share-card-row-num {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 300;
+  color: var(--ink-mute);
+  font-variation-settings: 'opsz' 144;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.share-card-row-emoji {
+  font-size: 32px;
+  line-height: 1;
+  text-align: center;
+}
+
+.share-card-row-name {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  color: var(--ink);
+  text-transform: capitalize;
+  font-variation-settings: 'opsz' 72;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+
+.share-card-row-leader {
+  flex: 1 1 auto;
+  border-bottom: 1px dotted var(--rule-strong);
+  align-self: center;
+  margin-bottom: 0.45em;
+  min-width: 16px;
+}
+
+.share-card-row-score {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.share-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-top: 32px;
+  margin-top: auto;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.share-card-footer-mark {
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+}
+
+.share-card-footer-rule {
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--rule);
+}
+
+.share-card-footer-note {
+  color: var(--ink-mute);
+  letter-spacing: 0.14em;
 }
 
 @media (prefers-reduced-motion: reduce) {

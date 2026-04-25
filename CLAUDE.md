@@ -45,7 +45,7 @@ The Vite dev server binds to `127.0.0.1`, not `localhost` — these are differen
 
 ## Architecture notes
 
-**Frontend (`frontend/src/`)** — auth and emoji-generation logic live in two hooks: `useSpotifyAuth` (PKCE flow, sessionStorage token, code-for-token exchange) and `useEmojiGenerator` (orchestrates `getTopTracks` → `analyzeLyrics` + `fetchQuotes`). `App.tsx` is purely presentational on top of these hooks. `spotify.ts` and `api.ts` are stateless modules — the hooks own all state.
+**Frontend (`frontend/src/`)** — auth and emoji-generation logic live in two hooks: `useSpotifyAuth` (PKCE flow, sessionStorage token, code-for-token exchange) and `useEmojiGenerator` (orchestrates `getTopTracks` → `analyzeLyrics` + `fetchQuotes`). A third hook, `useShare`, runs `html2canvas` over the `ShareCard` ref and hands the resulting PNG to `navigator.share` (with a download-link fallback). `App.tsx` is purely presentational on top of these hooks. `spotify.ts` and `api.ts` are stateless modules — the hooks own all state.
 
 **Backend (`api/app.py`)** — single-file Flask app. The Genius client and the CORS config are initialized at module load (heavy startup). `fetch_lyrics()` uses `genius.search_songs()` (official API) + `genius.lyrics(song_url=...)` (web scrape). The `/lyrics` route fans out lyric fetches across a `ThreadPoolExecutor` (`MAX_SONGS=25`, `FETCH_WORKERS=5`), then sends all texts in one batch call to the HF Inference API.
 
@@ -63,6 +63,8 @@ The Vite dev server binds to `127.0.0.1`, not `localhost` — these are differen
 
 **Per-song exceptions are caught** — both `/lyrics` and `/quote` wrap each song in try/except so one broken song (Unicode quirk, model edge case, etc.) doesn't 500 the whole request.
 
+**Share captures an off-screen ShareCard, not the live results** — `ShareCard` (`frontend/src/components/ShareCard.tsx`) is a fixed 1080×1350 editorial layout rendered into the DOM at `position: fixed; left: -10000px` whenever results exist. `useShare` aims `html2canvas` at that node, so the PNG is identical regardless of viewport. **Do not** point the capture ref at the live page or toggle a watermark element on/off during capture — both produced visible flicker and inconsistent mobile spacing in earlier versions. The `EMOJIFY` watermark lives only inside `ShareCard` (header wordmark + accent footer mark); never re-introduce a `.share-watermark` element on the live page.
+
 ## Frontend design system
 
 Editorial music magazine aesthetic — committed to and not negotiable without an explicit design conversation. Cream paper background, deep ink text, hot orange (`#FF3D00`) as the *only* accent. **No dark mode, no purple, no glass/blur effects, no rounded cards.** If you find yourself reaching for a hex value that isn't a token in `index.css`, stop and reconsider.
@@ -71,7 +73,7 @@ Editorial music magazine aesthetic — committed to and not negotiable without a
 
 **Two top-level layouts** (mutually exclusive — `App.tsx` picks one):
 - `.cover` — full-viewport editorial page used by `LoginScreen` and `LoadingScreen` via the shared `EditorialCover` component. Three rows: wordmark / hero / footer marginalia.
-- `.app-shell` — the logged-in results page. Header / time-range row / CTA / hero emotion / numbered list / marginalia.
+- `.app-shell` — the logged-in results page. Header / time-range row / CTA / hero emotion / numbered list / share CTA / marginalia. The share button sits **between** the list and the marginalia; the marginalia ("powered by Genius / HuggingFace") must remain the last on-page element. `Marginalia` is its own component (`components/Marginalia.tsx`) so `App.tsx` can slot the share CTA above it.
 
 **All visible strings live in `frontend/src/copy.ts`.** Don't inline new strings into components — add to `COPY` and reference. This file also exports `ANALYSIS_CAP = 25`, which **must stay in sync with `MAX_SONGS` in `api/app.py`** — it's how the frontend renders honest "across N tracks" microcopy without lying when Spotify returned more tracks than the backend processed.
 

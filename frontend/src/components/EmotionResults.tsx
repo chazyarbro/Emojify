@@ -16,7 +16,6 @@ export function EmotionResults({ results, trackCount }: EmotionResultsProps) {
     <>
       <HeroEmotion result={hero} trackCount={trackCount} />
       {rest.length > 0 && <EmotionList results={rest} startRank={2} />}
-      <Marginalia />
     </>
   );
 }
@@ -74,12 +73,3 @@ function EmotionList({
   );
 }
 
-function Marginalia() {
-  return (
-    <div className="marginalia">
-      {COPY.results.marginalia.map((line) => (
-        <p key={line}>{line}</p>
-      ))}
-    </div>
-  );
-}

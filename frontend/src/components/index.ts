@@ -5,3 +5,5 @@ export { TimeRangePicker } from "./TimeRangePicker";
 export { EmotionResults } from "./EmotionResults";
 export { ErrorMessage } from "./ErrorMessage";
 export { EditorialCover } from "./EditorialCover";
+export { ShareCard } from "./ShareCard";
+export { Marginalia } from "./Marginalia";
