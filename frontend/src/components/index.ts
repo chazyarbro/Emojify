@@ -4,3 +4,4 @@ export { Header } from "./Header";
 export { TimeRangePicker } from "./TimeRangePicker";
 export { EmotionResults } from "./EmotionResults";
 export { ErrorMessage } from "./ErrorMessage";
+export { EditorialCover } from "./EditorialCover";

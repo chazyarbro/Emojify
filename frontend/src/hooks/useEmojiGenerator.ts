@@ -5,12 +5,14 @@ import {
   analyzeLyrics,
   fetchQuotes,
 } from "../api";
+import { COPY, ANALYSIS_CAP } from "../copy";
 import type { EmotionResult } from "../types/api";
 import type { TimeRange } from "../types/spotify";
 
 export interface UseEmojiGeneratorResult {
   loading: boolean;
   results: EmotionResult[] | null;
+  trackCount: number;
   error: string | null;
   quotes: string[];
   setResults: (results: EmotionResult[] | null) => void;
@@ -21,6 +23,7 @@ export interface UseEmojiGeneratorResult {
 export function useEmojiGenerator(): UseEmojiGeneratorResult {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<EmotionResult[] | null>(null);
+  const [trackCount, setTrackCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [quotes, setQuotes] = useState<string[]>([]);
 
@@ -34,9 +37,11 @@ export function useEmojiGenerator(): UseEmojiGeneratorResult {
       const tracksData = await getTopTracks(timeRange);
       const artistSongs = spotifyTracksToArtistSongs(tracksData);
       const artistCount = Object.keys(artistSongs).length;
+      const sentTracks = Object.values(artistSongs).flat().length;
+      const analyzedCount = Math.min(sentTracks, ANALYSIS_CAP);
 
       if (artistCount === 0) {
-        setError("No top tracks found for this period.");
+        setError(COPY.errors.noTracks);
         setLoading(false);
         return;
       }
@@ -48,16 +53,15 @@ export function useEmojiGenerator(): UseEmojiGeneratorResult {
       const emotions = await analyzeLyrics(artistSongs);
 
       if (!Array.isArray(emotions) || emotions.length === 0) {
-        setError(
-          "No lyrics or emotions could be analyzed for your top tracks."
-        );
+        setError(COPY.errors.noLyrics);
       } else {
         const hasScores = emotions.some(
           (e) => Array.isArray(e) && e.length >= 2 && (e[1] as number) > 0
         );
         if (!hasScores) {
-          setError("No lyrics found for your top tracks.");
+          setError(COPY.errors.noLyrics);
         } else {
+          setTrackCount(analyzedCount);
           setResults(
             emotions.filter(
               (e): e is EmotionResult =>
@@ -67,7 +71,7 @@ export function useEmojiGenerator(): UseEmojiGeneratorResult {
         }
       }
     } catch (e) {
-      setError((e as Error).message || "Something went wrong.");
+      setError((e as Error).message || COPY.errors.generic);
     } finally {
       setLoading(false);
       setQuotes([]);
@@ -77,6 +81,7 @@ export function useEmojiGenerator(): UseEmojiGeneratorResult {
   return {
     loading,
     results,
+    trackCount,
     error,
     quotes,
     setResults,

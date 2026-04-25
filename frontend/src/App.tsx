@@ -9,6 +9,7 @@ import {
 } from "./components";
 import { useSpotifyAuth, useEmojiGenerator } from "./hooks";
 import { TIME_RANGES } from "./constants/timeRanges";
+import { COPY } from "./copy";
 import type { TimeRange } from "./types/spotify";
 import "./App.css";
 
@@ -19,6 +20,7 @@ function App() {
   const {
     loading,
     results,
+    trackCount,
     error: generatorError,
     quotes,
     setResults,
@@ -43,10 +45,9 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app-shell">
       <Header onLogout={onLogout} />
-      <main className="center">
-        {error && <ErrorMessage message={error} />}
+      <main>
         <TimeRangePicker
           value={timeRange}
           options={TIME_RANGES}
@@ -54,13 +55,20 @@ function App() {
         />
         <button
           type="button"
-          className="btn primary big"
+          className="cover-cta cta-inline"
           onClick={() => handleGenerate(timeRange)}
         >
-          Generate Emojis
+          {results ? COPY.results.ctaAgain : COPY.results.cta}
+          <span className="cta-arrow">→</span>
         </button>
+        {error && (
+          <ErrorMessage
+            message={error}
+            onRetry={() => handleGenerate(timeRange)}
+          />
+        )}
         {results && results.length > 0 && (
-          <EmotionResults results={results} />
+          <EmotionResults results={results} trackCount={trackCount} />
         )}
       </main>
     </div>
