@@ -24,6 +24,7 @@ function App() {
     loading,
     results,
     trackCount,
+    persona,
     error: generatorError,
     quotes,
     setResults,
@@ -76,7 +77,11 @@ function App() {
         )}
         {hasResults && (
           <>
-            <EmotionResults results={results} trackCount={trackCount} />
+            <EmotionResults
+              results={results}
+              trackCount={trackCount}
+              persona={persona}
+            />
             <button
               type="button"
               className="cover-cta cta-inline share-cta"
@@ -94,6 +99,7 @@ function App() {
           ref={shareCardRef}
           results={results}
           trackCount={trackCount}
+          persona={persona}
         />
       )}
     </div>

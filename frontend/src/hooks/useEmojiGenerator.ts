@@ -4,15 +4,17 @@ import {
   spotifyTracksToArtistSongs,
   analyzeLyrics,
   fetchQuotes,
+  fetchPersona,
 } from "../api";
 import { COPY, ANALYSIS_CAP } from "../copy";
-import type { EmotionResult } from "../types/api";
+import type { EmotionResult, Persona } from "../types/api";
 import type { TimeRange } from "../types/spotify";
 
 export interface UseEmojiGeneratorResult {
   loading: boolean;
   results: EmotionResult[] | null;
   trackCount: number;
+  persona: Persona | null;
   error: string | null;
   quotes: string[];
   setResults: (results: EmotionResult[] | null) => void;
@@ -22,14 +24,21 @@ export interface UseEmojiGeneratorResult {
 
 export function useEmojiGenerator(): UseEmojiGeneratorResult {
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<EmotionResult[] | null>(null);
+  const [results, setResultsState] = useState<EmotionResult[] | null>(null);
   const [trackCount, setTrackCount] = useState(0);
+  const [persona, setPersona] = useState<Persona | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [quotes, setQuotes] = useState<string[]>([]);
 
+  const setResults = useCallback((next: EmotionResult[] | null) => {
+    setResultsState(next);
+    if (next === null) setPersona(null);
+  }, []);
+
   const handleGenerate = useCallback(async (timeRange: TimeRange) => {
     setError(null);
-    setResults(null);
+    setResultsState(null);
+    setPersona(null);
     setLoading(true);
     setQuotes([]);
 
@@ -54,22 +63,24 @@ export function useEmojiGenerator(): UseEmojiGeneratorResult {
 
       if (!Array.isArray(emotions) || emotions.length === 0) {
         setError(COPY.errors.noLyrics);
-      } else {
-        const hasScores = emotions.some(
-          (e) => Array.isArray(e) && e.length >= 2 && (e[1] as number) > 0
-        );
-        if (!hasScores) {
-          setError(COPY.errors.noLyrics);
-        } else {
-          setTrackCount(analyzedCount);
-          setResults(
-            emotions.filter(
-              (e): e is EmotionResult =>
-                Array.isArray(e) && e.length >= 2 && (e[1] as number) > 0
-            )
-          );
-        }
+        return;
       }
+
+      const scored = emotions.filter(
+        (e): e is EmotionResult =>
+          Array.isArray(e) && e.length >= 2 && (e[1] as number) > 0
+      );
+
+      if (scored.length === 0) {
+        setError(COPY.errors.noLyrics);
+        return;
+      }
+
+      setTrackCount(analyzedCount);
+      setResultsState(scored);
+
+      const personaResult = await fetchPersona(scored);
+      setPersona(personaResult);
     } catch (e) {
       setError((e as Error).message || COPY.errors.generic);
     } finally {
@@ -82,6 +93,7 @@ export function useEmojiGenerator(): UseEmojiGeneratorResult {
     loading,
     results,
     trackCount,
+    persona,
     error,
     quotes,
     setResults,

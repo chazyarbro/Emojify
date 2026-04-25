@@ -3,7 +3,7 @@
  */
 
 import type { SpotifyTopTracksResponse } from "./types/spotify";
-import type { ArtistSongs, EmotionResult } from "./types/api";
+import type { ArtistSongs, EmotionResult, Persona } from "./types/api";
 
 export function spotifyTracksToArtistSongs(
   spotifyTracksResponse: SpotifyTopTracksResponse
@@ -47,4 +47,20 @@ export async function fetchQuotes(
   });
   if (!res.ok) return [];
   return res.json() as Promise<string[]>;
+}
+
+export async function fetchPersona(
+  emotions: EmotionResult[]
+): Promise<Persona | null> {
+  try {
+    const res = await fetch(`${API_BASE}/persona`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emotions }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as Persona;
+  } catch {
+    return null;
+  }
 }

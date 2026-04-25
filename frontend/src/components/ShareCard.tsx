@@ -1,22 +1,25 @@
 import { forwardRef } from "react";
-import type { EmotionResult } from "../types/api";
+import type { EmotionResult, Persona } from "../types/api";
 import { EMOTION_EMOJI, type Emotion } from "../types/emotions";
 
 interface ShareCardProps {
   results: EmotionResult[];
   trackCount: number;
+  persona: Persona | null;
 }
 
 const SECONDARY_LIMIT = 5;
 
 export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
-  function ShareCard({ results, trackCount }, ref) {
+  function ShareCard({ results, trackCount, persona }, ref) {
     const hero = results[0];
     if (!hero) return null;
 
     const [heroEmotion, heroScore] = hero;
     const heroEmoji = EMOTION_EMOJI[heroEmotion as Emotion] ?? "😐";
-    const rest = results.slice(1, 1 + SECONDARY_LIMIT);
+
+    const list = persona ? results.slice(0, SECONDARY_LIMIT + 1) : results.slice(1, 1 + SECONDARY_LIMIT);
+    const listStart = persona ? 1 : 2;
 
     return (
       <div className="share-card-frame" aria-hidden>
@@ -26,25 +29,39 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             <span className="share-card-issue">A MUSIC EMOTION ANALYSIS</span>
           </header>
 
-          <section className="share-card-hero">
-            <div className="share-card-emoji">{heroEmoji}</div>
-            <div className="share-card-hero-info">
-              <div className="share-card-rank">01</div>
-              <h2 className="share-card-name">{heroEmotion}</h2>
-              <p className="share-card-summary">
-                Across {trackCount} of my top tracks,{" "}
-                {heroEmotion.toLowerCase()} hit the loudest.
-              </p>
-              <p className="share-card-meta">
-                SCORE {heroScore.toFixed(2)} · {trackCount} TRACKS
-              </p>
-            </div>
-          </section>
+          {persona ? (
+            <section className="share-card-hero share-card-hero-persona">
+              <div className="share-card-emoji">{persona.emoji}</div>
+              <div className="share-card-hero-info">
+                <div className="share-card-kicker">THE DIAGNOSIS</div>
+                <h2 className="share-card-name">{persona.name}</h2>
+                <p className="share-card-tagline">{persona.tagline}</p>
+                <p className="share-card-meta">
+                  SCORE {heroScore.toFixed(2)} · {trackCount} TRACKS
+                </p>
+              </div>
+            </section>
+          ) : (
+            <section className="share-card-hero">
+              <div className="share-card-emoji">{heroEmoji}</div>
+              <div className="share-card-hero-info">
+                <div className="share-card-rank">01</div>
+                <h2 className="share-card-name">{heroEmotion}</h2>
+                <p className="share-card-summary">
+                  Across {trackCount} of my top tracks,{" "}
+                  {heroEmotion.toLowerCase()} hit the loudest.
+                </p>
+                <p className="share-card-meta">
+                  SCORE {heroScore.toFixed(2)} · {trackCount} TRACKS
+                </p>
+              </div>
+            </section>
+          )}
 
-          {rest.length > 0 && (
-            <ol className="share-card-list" start={2}>
-              {rest.map(([emotion, score], idx) => {
-                const rank = idx + 2;
+          {list.length > 0 && (
+            <ol className="share-card-list" start={listStart}>
+              {list.map(([emotion, score], idx) => {
+                const rank = listStart + idx;
                 const emoji = EMOTION_EMOJI[emotion as Emotion] ?? "😐";
                 return (
                   <li key={emotion} className="share-card-row">

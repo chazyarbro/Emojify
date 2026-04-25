@@ -1,17 +1,32 @@
-import type { EmotionResult } from "../types/api";
+import type { EmotionResult, Persona } from "../types/api";
 import { EMOTION_EMOJI, type Emotion } from "../types/emotions";
 import { COPY } from "../copy";
+import { PersonaHero } from "./PersonaHero";
 
 interface EmotionResultsProps {
   results: EmotionResult[];
   trackCount: number;
+  persona: Persona | null;
 }
 
-export function EmotionResults({ results, trackCount }: EmotionResultsProps) {
+export function EmotionResults({
+  results,
+  trackCount,
+  persona,
+}: EmotionResultsProps) {
   const hero = results[0];
   if (!hero) return null;
-  const rest = results.slice(1);
 
+  if (persona) {
+    return (
+      <>
+        <PersonaHero persona={persona} hero={hero} trackCount={trackCount} />
+        <EmotionList results={results} startRank={1} />
+      </>
+    );
+  }
+
+  const rest = results.slice(1);
   return (
     <>
       <HeroEmotion result={hero} trackCount={trackCount} />
@@ -72,4 +87,3 @@ function EmotionList({
     </ol>
   );
 }
-

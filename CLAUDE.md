@@ -9,8 +9,9 @@ A two-service web app: React/Vite frontend talks directly to Spotify (PKCE OAuth
 ```
 Browser ──Spotify PKCE──> Spotify
    │
-   └─POST /lyrics, /quote──> Flask (api/) ──┬─> Genius (lyrics)
-                                            └─> HF Inference API (emotions)
+   └─POST /lyrics, /quote, ──> Flask (api/) ──┬─> Genius (lyrics)
+        /persona                              ├─> HF Inference API (emotions)
+                                              └─> Anthropic Haiku 4.5 (persona)
 ```
 
 ## Commands
@@ -31,6 +32,7 @@ Browser ──Spotify PKCE──> Spotify
 `api/.env` (loaded by `python-dotenv`):
 - `GENIUS_TOKEN` — Genius API token
 - `HF_API_TOKEN` — HuggingFace API token (Read scope)
+- `ANTHROPIC_API_KEY` — Anthropic API key (used by `/persona` for Claude Haiku 4.5). Optional — if unset the route returns a deterministic fallback persona instead of 500ing.
 - `CORS_ORIGINS` (optional, prod only) — comma-separated origins, **no trailing slash**
 
 `frontend/.env`:
@@ -45,9 +47,9 @@ The Vite dev server binds to `127.0.0.1`, not `localhost` — these are differen
 
 ## Architecture notes
 
-**Frontend (`frontend/src/`)** — auth and emoji-generation logic live in two hooks: `useSpotifyAuth` (PKCE flow, sessionStorage token, code-for-token exchange) and `useEmojiGenerator` (orchestrates `getTopTracks` → `analyzeLyrics` + `fetchQuotes`). A third hook, `useShare`, runs `html2canvas` over the `ShareCard` ref and hands the resulting PNG to `navigator.share` (with a download-link fallback). `App.tsx` is purely presentational on top of these hooks. `spotify.ts` and `api.ts` are stateless modules — the hooks own all state.
+**Frontend (`frontend/src/`)** — auth and emoji-generation logic live in two hooks: `useSpotifyAuth` (PKCE flow, sessionStorage token, code-for-token exchange) and `useEmojiGenerator` (orchestrates `getTopTracks` → `analyzeLyrics` → `fetchPersona`, plus `fetchQuotes` fired in parallel). A third hook, `useShare`, runs `html2canvas` over the `ShareCard` ref and hands the resulting PNG to `navigator.share` (with a download-link fallback). `App.tsx` is purely presentational on top of these hooks. `spotify.ts` and `api.ts` are stateless modules — the hooks own all state.
 
-**Backend (`api/app.py`)** — single-file Flask app. The Genius client and the CORS config are initialized at module load (heavy startup). `fetch_lyrics()` uses `genius.search_songs()` (official API) + `genius.lyrics(song_url=...)` (web scrape). The `/lyrics` route fans out lyric fetches across a `ThreadPoolExecutor` (`MAX_SONGS=25`, `FETCH_WORKERS=5`), then sends all texts in one batch call to the HF Inference API.
+**Backend (`api/app.py`)** — single-file Flask app. The Genius client and the CORS config are initialized at module load (heavy startup). `fetch_lyrics()` uses `genius.search_songs()` (official API) + `genius.lyrics(song_url=...)` (web scrape). The `/lyrics` route fans out lyric fetches across a `ThreadPoolExecutor` (`MAX_SONGS=25`, `FETCH_WORKERS=5`), then sends all texts in one batch call to the HF Inference API. The `/persona` route takes that ranked emotion vector and asks Claude Haiku 4.5 (`anthropic` SDK, structured outputs via `output_config.format` with a `json_schema`) to return `{name, emoji, tagline}` — a magazine-archetype diagnosis. The Anthropic client is lazy-initialized: if `ANTHROPIC_API_KEY` is unset or the call fails, the route returns a deterministic fallback persona so the analysis still renders.
 
 ## Non-obvious things that will trip you up
 
@@ -62,6 +64,10 @@ The Vite dev server binds to `127.0.0.1`, not `localhost` — these are differen
 **React StrictMode double-fires the PKCE exchange** — `useSpotifyAuth`'s effect runs twice in dev. The second run reuses the same `?code` and Spotify returns `invalid_grant`. The fix is to call `window.history.replaceState` to strip `?code` from the URL **before** the async `exchangeCodeForToken` call, not after.
 
 **Per-song exceptions are caught** — both `/lyrics` and `/quote` wrap each song in try/except so one broken song (Unicode quirk, model edge case, etc.) doesn't 500 the whole request.
+
+**Persona is the lead, not the dominant emotion** — `PersonaHero` (LLM-generated archetype name + emoji + dry tagline) replaces the old "01 + Sadness + summary" hero block whenever `persona` is present. The numbered emotion list then starts at **01** with the dominant emotion. When `persona` is `null` (network error reaching `/persona`), `EmotionResults` falls back to the legacy `HeroEmotion` block and the list starts at **02** — that's the only path where the rank-01 hero sits outside the list. Mirror this branch in `ShareCard` if you change either rendering.
+
+**Persona voice is dry / editorial** — names like "The Tender Pessimist", "Mostly Fine, Quietly Spiraling", "An Optimist with Footnotes". The system prompt in `api/app.py` (`PERSONA_SYSTEM`) explicitly forbids BuzzFeed-style names, gendered terms, hashtags, and exclamation marks. If you tweak it, keep that register — switching to a playful tone breaks the editorial brand the rest of the UI depends on.
 
 **Share captures an off-screen ShareCard, not the live results** — `ShareCard` (`frontend/src/components/ShareCard.tsx`) is a fixed 1080×1350 editorial layout rendered into the DOM at `position: fixed; left: -10000px` whenever results exist. `useShare` aims `html2canvas` at that node, so the PNG is identical regardless of viewport. **Do not** point the capture ref at the live page or toggle a watermark element on/off during capture — both produced visible flicker and inconsistent mobile spacing in earlier versions. The `EMOJIFY` watermark lives only inside `ShareCard` (header wordmark + accent footer mark); never re-introduce a `.share-watermark` element on the live page.
 
@@ -88,6 +94,6 @@ See `frontend/plan.md` for full design rationale (why these choices, what was re
 ## Production deployment
 
 - **Frontend → Vercel** (root: `frontend/`, env: `VITE_SPOTIFY_CLIENT_ID`, `VITE_API_URL`)
-- **Backend → Render** free tier (root: `api/`, start command: `gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120`, env: `GENIUS_TOKEN`, `HF_API_TOKEN`, `CORS_ORIGINS`)
+- **Backend → Render** free tier (root: `api/`, start command: `gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120`, env: `GENIUS_TOKEN`, `HF_API_TOKEN`, `ANTHROPIC_API_KEY`, `CORS_ORIGINS`)
 
 A `Procfile` exists in `api/` for Render auto-detection. Render free tier spins down after 15 min idle (~30s cold start); the HF model also has its own warm-up. Both push from `master` auto-deploy.

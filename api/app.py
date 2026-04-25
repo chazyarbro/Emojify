@@ -2,12 +2,14 @@
 Flask API for lyrics emotion analysis and random quotes.
 Uses Genius for lyrics and HuggingFace Inference API (roberta-base-go_emotions) for emotion.
 """
+import json
 import os
 import random
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+import anthropic
 import nltk
 import lyricsgenius as lg
 import requests
@@ -77,6 +79,63 @@ genius._session.headers["User-Agent"] = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/124.0.0.0 Safari/537.36"
 )
+
+# Anthropic client for /persona — reads ANTHROPIC_API_KEY from env.
+# Initialized lazily so the app still boots if the key is unset (the route
+# returns a deterministic fallback in that case).
+_anthropic_client = None
+
+
+def get_anthropic_client():
+    global _anthropic_client
+    if _anthropic_client is None and os.getenv("ANTHROPIC_API_KEY"):
+        _anthropic_client = anthropic.Anthropic()
+    return _anthropic_client
+
+
+PERSONA_MODEL = "claude-haiku-4-5"
+
+PERSONA_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "A 3-7 word magazine-archetype label diagnosing the listener.",
+        },
+        "emoji": {
+            "type": "string",
+            "description": "1-3 Unicode emoji that capture the emotional blend.",
+        },
+        "tagline": {
+            "type": "string",
+            "description": "One short dry sentence (max 12 words) describing the listener.",
+        },
+    },
+    "required": ["name", "emoji", "tagline"],
+    "additionalProperties": False,
+}
+
+PERSONA_SYSTEM = """You are a music magazine columnist with a dry, tongue-in-cheek voice. \
+You write short, literary "diagnoses" of people based on the emotional makeup of their \
+favourite songs.
+
+Given a ranked list of emotions and weights, return three things in JSON:
+
+1. "name" — a 3 to 7 word magazine-archetype label. Editorial register, slightly literary, \
+mildly self-aware. GOOD: "The Tender Pessimist", "A Sentimental Catastrophe", \
+"Mostly Fine, Quietly Spiraling", "An Optimist with Footnotes", "The Dignified Wreck". \
+AVOID: BuzzFeed-style ("Sad Bestie Energy"), generic types ("The Romantic"), \
+gendered terms ("Boy/Girl"), emoji words, hashtags, exclamation marks.
+
+2. "emoji" — 1 to 3 Unicode emoji that capture the blend. Lean modern and specific. \
+GOOD picks: 🥹 🫠 🥲 😶‍‍🌫️ 🫥 🥀 💔 🕯️ 🪞 🎻 🌧️ 🥃 🩹 🪨 🌊 💌 ✨ 🌫️ 🪺 🎬. \
+AVOID obvious defaults (😢 ❤️ 😄 😡) unless paired with a more specific second glyph. \
+Stack a second only if it adds nuance, not for emphasis.
+
+3. "tagline" — ONE short sentence in the same dry voice. Diagnostic, not motivational. \
+Max 12 words. GOOD: "Mostly heartbreak, mildly literary.", "Cries on schedule. Tips well.", \
+"A romantic in the depressive sense." AVOID: pep talks, hashtags, second-person address \
+("you are..."), exclamation marks."""
 
 
 def classify_emotions_batch(texts):
@@ -192,6 +251,58 @@ def lyrics():
     emotion_totals["neutral"] = 0
     sorted_emotions = sorted(emotion_totals.items(), key=lambda x: x[1], reverse=True)
     return jsonify(sorted_emotions)
+
+
+@app.route("/persona", methods=["POST"])
+def persona():
+    body = request.get_json(silent=True) or {}
+    raw = body.get("emotions") or []
+
+    pairs = []
+    for entry in raw:
+        if not isinstance(entry, (list, tuple)) or len(entry) < 2:
+            continue
+        label, score = entry[0], entry[1]
+        if not isinstance(label, str):
+            continue
+        try:
+            score_f = float(score)
+        except (TypeError, ValueError):
+            continue
+        if score_f > 0:
+            pairs.append((label, score_f))
+
+    pairs.sort(key=lambda p: p[1], reverse=True)
+    top = pairs[:6]
+    top_label = top[0][0] if top else "neutral"
+
+    fallback = {
+        "name": f"The Mostly {top_label.title()} Type",
+        "emoji": "🫥",
+        "tagline": "Diagnosis withheld pending further evidence.",
+    }
+
+    client = get_anthropic_client()
+    if client is None or not top:
+        return jsonify(fallback)
+
+    user_text = "\n".join(f"{label}: {score:.2f}" for label, score in top)
+
+    try:
+        response = client.messages.create(
+            model=PERSONA_MODEL,
+            max_tokens=300,
+            system=PERSONA_SYSTEM,
+            messages=[{"role": "user", "content": user_text}],
+            output_config={"format": {"type": "json_schema", "schema": PERSONA_SCHEMA}},
+        )
+        text = "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
+        data = json.loads(text)
+        if not all(isinstance(data.get(k), str) and data.get(k) for k in ("name", "emoji", "tagline")):
+            return jsonify(fallback)
+        return jsonify(data)
+    except Exception:
+        return jsonify(fallback)
 
 
 @app.route("/quote", methods=["POST"])
