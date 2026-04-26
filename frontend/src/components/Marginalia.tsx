@@ -6,6 +6,9 @@ export function Marginalia() {
       {COPY.results.marginalia.map((line) => (
         <p key={line}>{line}</p>
       ))}
+      <p>
+        <a href="/privacy" className="marginalia-link">{COPY.results.privacyLink}</a>
+      </p>
     </div>
   );
 }

@@ -15,6 +15,7 @@ export function EditorialCover({ children, bottomLabel }: EditorialCoverProps) {
       <main className="cover-hero">{children}</main>
       <footer className="cover-bottom cover-anim-4">
         <span>{bottomLabel ?? COPY.cover.footer}</span>
+        <a href="/privacy" className="cover-bottom-link">{COPY.cover.privacyLink}</a>
       </footer>
     </div>
   );
